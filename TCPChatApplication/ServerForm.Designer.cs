@@ -35,6 +35,7 @@
             PortLabel = new Label();
             HostTextBox = new TextBox();
             HostLabel = new Label();
+            checkedListBox1 = new CheckedListBox();
             SuspendLayout();
             // 
             // StopButton
@@ -101,11 +102,20 @@
             HostLabel.TabIndex = 7;
             HostLabel.Text = "Host:";
             // 
+            // checkedListBox1
+            // 
+            checkedListBox1.FormattingEnabled = true;
+            checkedListBox1.Location = new Point(522, 56);
+            checkedListBox1.Name = "checkedListBox1";
+            checkedListBox1.Size = new Size(190, 292);
+            checkedListBox1.TabIndex = 14;
+            // 
             // ServerForm
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(541, 373);
+            ClientSize = new Size(753, 373);
+            Controls.Add(checkedListBox1);
             Controls.Add(StopButton);
             Controls.Add(StatusTextBox);
             Controls.Add(StartButton);
@@ -130,5 +140,6 @@
         private Label PortLabel;
         private TextBox HostTextBox;
         private Label HostLabel;
+        private CheckedListBox checkedListBox1;
     }
 }

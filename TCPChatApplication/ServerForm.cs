@@ -1,5 +1,4 @@
-﻿using SimpleTCP;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -8,12 +7,17 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using System.Net;
+using System.Net.Sockets;
 
 namespace TCPChatApplication
 {
     public partial class ServerForm : Form
     {
-        SimpleTcpServer server;
+        //SimpleTcpServer server;
+        TcpListener listener;
+        CancellationTokenSource listenCancellationTokenSource;
+        CancellationToken listenCancellationToken;
 
         public ServerForm()
         {
@@ -22,33 +26,49 @@ namespace TCPChatApplication
 
         private void ServerForm_Load(object sender, EventArgs e)
         {
-            server = new SimpleTcpServer();
-            server.Delimiter = 0x13;//enter
-            server.StringEncoder = Encoding.UTF8;
-            server.DataReceived += Server_DataReceived;
+
         }
 
-        private void StartButton_Click(object sender, EventArgs e)
+        private async void StartButton_Click(object sender, EventArgs e)
         {
-            StatusTextBox.Text += "Server starting...";
-            System.Net.IPAddress ip = System.Net.IPAddress.Parse(HostTextBox.Text);
-            server.Start(ip, Convert.ToInt32(PortTextBox.Text));
+            try
+            {
+                IPAddress ipAddress = IPAddress.Parse(HostTextBox.Text);
+                int port = Convert.ToInt32(PortTextBox.Text);
+                this.listenCancellationTokenSource = new CancellationTokenSource();
+                this.listenCancellationToken = listenCancellationTokenSource.Token;
+                await this.Listen(ipAddress, port);
+            }
+            catch (Exception ex) {
+                MessageBox.Show(ex.ToString());
+            }     
         }
 
         private void StopButton_Click(object sender, EventArgs e)
         {
-            if (server.IsStarted)
-                server.Stop();
+            listenCancellationTokenSource.Cancel();
         }
 
-        private void Server_DataReceived(object sender, SimpleTCP.Message e)
+        private Task Listen(IPAddress ipAddress, int Port)
         {
-            //Update mesage to txtStatus
-            StatusTextBox.Invoke((MethodInvoker)delegate ()
+            Task listenTask = Task.Run(() =>
             {
-                StatusTextBox.Text += e.MessageString;
-                e.ReplyLine(string.Format("You said: {0}", e.MessageString));
+                // Listen at specified IP and port number.
+                listener = new TcpListener(ipAddress, Port);
+                //StatusTextBox.Text += "Listening...\n";
+                StatusTextBox.Invoke(() => StatusTextBox.Text += "listening...\r\n");
+                listener.Start();
+
+                while (!listenCancellationToken.IsCancellationRequested)
+                {
+                    Thread.Sleep(1000);
+                    //StatusTextBox.Text += "Still listening... \n";
+                    StatusTextBox.Invoke(() => StatusTextBox.Text += "Still listening...\r\n");
+                }
+                listener.Stop();
+                StatusTextBox.Invoke(() => StatusTextBox.Text += "Stopped listening...\r\n");
             });
+            return listenTask;
         }
 
         private void ServerForm_FormClosed(object sender, FormClosedEventArgs e)
