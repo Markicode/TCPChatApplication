@@ -49,21 +49,37 @@ namespace TCPChatApplication
             listenCancellationTokenSource.Cancel();
         }
 
+
         private Task Listen(IPAddress ipAddress, int Port)
         {
             Task listenTask = Task.Run(() =>
             {
-                // Listen at specified IP and port number.
+                // Listen at specified ip/port.
                 listener = new TcpListener(ipAddress, Port);
-                //StatusTextBox.Text += "Listening...\n";
                 StatusTextBox.Invoke(() => StatusTextBox.Text += "listening...\r\n");
                 listener.Start();
 
+                // listen loop as long as task is not canceled.
                 while (!listenCancellationToken.IsCancellationRequested)
                 {
-                    Thread.Sleep(1000);
-                    //StatusTextBox.Text += "Still listening... \n";
-                    StatusTextBox.Invoke(() => StatusTextBox.Text += "Still listening...\r\n");
+
+                    // connect client.
+                    TcpClient client = listener.AcceptTcpClient();
+
+                    // Get incoming data through stream
+                    NetworkStream nwStream = client.GetStream();
+                    byte[] buffer = new byte[client.ReceiveBufferSize];
+
+                    // Read incoming stream
+                    int bytesRead = nwStream.Read(buffer, 0, client.ReceiveBufferSize);
+
+                    // Convert data to string
+                    string dataReceived = Encoding.ASCII.GetString(buffer, 0, bytesRead);
+                    StatusTextBox.Invoke(() => StatusTextBox.Text += dataReceived + "\r\n");
+
+                    // Write back to client
+                    byte[] bytesToSend = ASCIIEncoding.ASCII.GetBytes("--received--");
+                    nwStream.Write(bytesToSend, 0, bytesToSend.Length);
                 }
                 listener.Stop();
                 StatusTextBox.Invoke(() => StatusTextBox.Text += "Stopped listening...\r\n");
