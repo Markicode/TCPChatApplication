@@ -36,6 +36,8 @@
             MessageTextBox = new TextBox();
             SendButton = new Button();
             ChatTextBox = new TextBox();
+            ChatnameTextBox = new TextBox();
+            ChatnameLabel = new Label();
             SuspendLayout();
             // 
             // HostLabel
@@ -110,11 +112,30 @@
             ChatTextBox.Size = new Size(330, 242);
             ChatTextBox.TabIndex = 7;
             // 
+            // ChatnameTextBox
+            // 
+            ChatnameTextBox.Location = new Point(124, 127);
+            ChatnameTextBox.Name = "ChatnameTextBox";
+            ChatnameTextBox.Size = new Size(164, 23);
+            ChatnameTextBox.TabIndex = 8;
+            ChatnameTextBox.Text = "Client";
+            // 
+            // ChatnameLabel
+            // 
+            ChatnameLabel.AutoSize = true;
+            ChatnameLabel.Location = new Point(53, 130);
+            ChatnameLabel.Name = "ChatnameLabel";
+            ChatnameLabel.Size = new Size(65, 15);
+            ChatnameLabel.TabIndex = 9;
+            ChatnameLabel.Text = "Chatname:";
+            // 
             // ClientForm
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(435, 432);
+            Controls.Add(ChatnameLabel);
+            Controls.Add(ChatnameTextBox);
             Controls.Add(ChatTextBox);
             Controls.Add(SendButton);
             Controls.Add(MessageTextBox);
@@ -141,5 +162,7 @@
         private TextBox MessageTextBox;
         private Button SendButton;
         private TextBox ChatTextBox;
+        private TextBox ChatnameTextBox;
+        private Label ChatnameLabel;
     }
 }
