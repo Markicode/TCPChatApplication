@@ -147,7 +147,6 @@
             Name = "ClientForm";
             Text = "Client";
             FormClosed += ClientForm_FormClosed;
-            Load += ClientForm_Load;
             ResumeLayout(false);
             PerformLayout();
         }

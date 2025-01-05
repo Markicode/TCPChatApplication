@@ -11,14 +11,14 @@ namespace TCPChatApplication
         {
             ServerForm serverForm = new ServerForm();
             serverForm.Show();
-            this.Hide();
+            //this.Hide();
         }
 
         private void ClientButton_Click(object sender, EventArgs e)
         {
             ClientForm clientForm = new ClientForm();
             clientForm.Show();
-            this.Hide();
+            //this.Hide();
         }
     }
 

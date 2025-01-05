@@ -133,23 +133,32 @@ namespace TCPChatApplication
 
                 while (true)
                 {
-                    NetworkStream nwStream = client.GetStream();
-                    byte[] buffer = new byte[1024];
-                    int byteCount = nwStream.Read(buffer, 0, buffer.Length);
-
-                    if (byteCount == 0)
+                    try
                     {
+                        NetworkStream nwStream = client.GetStream();
+                        byte[] buffer = new byte[1024];
+                        int byteCount = nwStream.Read(buffer, 0, buffer.Length);
+
+                        if (byteCount == 0)
+                        {
+                            break;
+                        }
+
+                        string data = Encoding.ASCII.GetString(buffer, 0, byteCount);
+                        Broadcast(data);
+                        StatusTextBox.Invoke(() => StatusTextBox.Text += data + "\r\n");
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show(ex.ToString());
                         break;
                     }
-
-                    string data = Encoding.ASCII.GetString(buffer, 0, byteCount);
-                    Broadcast(data);
-                    StatusTextBox.Invoke(() => StatusTextBox.Text += data + "\r\n");
                 }
 
-                //lock (_lock) clients.Remove(id);
-                //client.Client.Shutdown(SocketShutdown.Both);
-                //client.Close();
+                lock (_lock) clients.Remove(id);
+                client.Client.Shutdown(SocketShutdown.Both);
+                client.Close();
+                StatusTextBox.Invoke(() => StatusTextBox.Text += clientId + " disconnected \r\n");
             });
             await handleClientsTask;
         }
