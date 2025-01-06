@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.ComponentModel.Design;
 using System.Data;
 using System.Drawing;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
@@ -60,13 +62,16 @@ namespace TCPChatApplication
 
         private async void SendButton_Click(object sender, EventArgs e)
         {
-            await this.Send();
+            string textToSend = MessageTextBox.Text;
+            await this.Send(textToSend);
         }
 
         private Task Connect(CancellationToken connCancelToken)
         {
             Task connectTask = Task.Run(async () =>
             {
+                
+
                 try
                 {
                     // Create TCPClient at specified ip/port and assign chatname. Upon succes, change connect button to disconnect button.
@@ -82,12 +87,67 @@ namespace TCPChatApplication
                 }
 
                 NetworkStream ns = client.GetStream();
+                string answer = "";
+
+                if (this.chatName != null && client != null)
+                {
+                    // Send chatname to server
+                    byte[] bytesToSend = ASCIIEncoding.ASCII.GetBytes(this.chatName);
+                    ns.Write(bytesToSend, 0, bytesToSend.Length);
+                    ChatTextBox.Invoke(() => ChatTextBox.Text += "3");
+                    //Thread.Sleep(1000);
+
+                    for (int i = 0; i<10000; i++)
+                    {
+                        if(ns.DataAvailable)
+                        {
+                            byte[] receivedBytes = new byte[1024];
+                            int byte_count = ns.Read(receivedBytes, 0, receivedBytes.Length);
+                            ChatTextBox.Invoke(() => ChatTextBox.Text += "4");
+                            answer = Encoding.ASCII.GetString(receivedBytes, 0, byte_count);
+                            break;
+                        }
+                        else
+                        {
+                            answer = "timeout";
+                        }
+                    }
+
+                    
+                    MessageBox.Show(answer);
+                    if (answer == "taken")
+                    {
+                        MessageBox.Show("o oh 2");
+                        await this.Disconnect();
+                        ChatTextBox.Invoke(() => ChatTextBox.Text += "Username already taken. Disconnected! \r\n");
+                    }
+                    if (answer ==  "free")
+                    {
+                        ChatTextBox.Invoke(() => ChatTextBox.Text += "Username appointed. Connected! \r\n");
+                    }
+                    if (answer == "timeout")
+                    {
+                        ChatTextBox.Invoke(() => ChatTextBox.Text += "Server timeout. Not connected! \r\n");
+                    }
+
+                    /*while ((byte_count = ns.Read(receivedBytes, 0, receivedBytes.Length)) > 0)
+                    {
+                        string name = Encoding.ASCII.GetString(receivedBytes, 0, byte_count);
+                    }*/
+                }
+
+                else
+                {
+                    await this.Disconnect();
+                }
+
 
                 while (true)
                 {
+                    ChatTextBox.Invoke(() => ChatTextBox.Text += "1");
                     try
                     {
-                        //ChatTextBox.Invoke(() => ChatTextBox.Text += "1");
+                        
                         if (!connCancelToken.IsCancellationRequested)
                         {
                             if (ns.DataAvailable)
@@ -126,6 +186,7 @@ namespace TCPChatApplication
                 }
 
                 // TODO: proper cleanup and control functionality
+                ChatTextBox.Invoke(() => ChatTextBox.Text += "6");
                 client.Client.Shutdown(SocketShutdown.Send);
                 ns.Close();
                 client.Close();
@@ -135,16 +196,15 @@ namespace TCPChatApplication
             return connectTask;
         }
 
-        private Task Send()
+        private Task Send(string message)
         {
             Task sendTask = Task.Run(() =>
             {
                 try
                 {
                     // Open stream and convert message to bytes
-                    string textToSend = MessageTextBox.Text;
                     NetworkStream nwStream = client.GetStream();
-                    byte[] bytesToSend = ASCIIEncoding.ASCII.GetBytes(this.chatName + "~" + textToSend);
+                    byte[] bytesToSend = ASCIIEncoding.ASCII.GetBytes(this.chatName + "~" + message);
 
                     // Send the message
                     nwStream.Write(bytesToSend, 0, bytesToSend.Length);
@@ -165,12 +225,32 @@ namespace TCPChatApplication
             {
                 try
                 {
-                    if (!connCancelToken.IsCancellationRequested)
+                    NetworkStream ns = client.GetStream();
+                    byte[] receivedBytes = new byte[1024];
+                    int byte_count;
+
+                    while (!connCancelToken.IsCancellationRequested)
+                    {
+                        if (ns.DataAvailable)
+                        {
+                            byte_count = ns.Read(receivedBytes, 0, receivedBytes.Length);
+                            string data = Encoding.ASCII.GetString(receivedBytes, 0, byte_count);
+                            string[] segments = data.Split('~');
+
+                            ChatTextBox.Invoke(() => ChatTextBox.Text += segments[0] + ": " + segments[1] + "\r\n");
+                        }
+                    }
+
+
+
+                    /*if (!connCancelToken.IsCancellationRequested)
                     {
                         NetworkStream ns = client.GetStream();
                         byte[] receivedBytes = new byte[1024];
                         int byte_count;
                         ChatTextBox.Invoke(() => ChatTextBox.Text += "3");
+
+                        
                         while ((byte_count = ns.Read(receivedBytes, 0, receivedBytes.Length)) > 0)
                         {
                             ChatTextBox.Invoke(() => ChatTextBox.Text += "4");
@@ -184,11 +264,12 @@ namespace TCPChatApplication
 
                             ChatTextBox.Invoke(() => ChatTextBox.Text += segments[0] + ": " + segments[1] + "\r\n");
                         }
+
                     }
                     else
                     {
                         connCancelToken.ThrowIfCancellationRequested();
-                    }
+                    } */
                 }
                 catch (Exception ex)
                 {
@@ -202,6 +283,7 @@ namespace TCPChatApplication
                     }
 
                 }
+                ChatTextBox.Invoke(() => ChatTextBox.Text += "7");
 
             });
             return receiveDataTask;

@@ -15,20 +15,23 @@ namespace TCPChatApplication
     public partial class ServerForm : Form
     {
         static readonly object _lock = new object();
-        static readonly Dictionary<int, TcpClient> clients = new Dictionary<int, TcpClient>();
+        static readonly Dictionary<string, TcpClient> clients = new Dictionary<string, TcpClient>();
         static readonly Dictionary<int, NetworkStream> nwStreams = new Dictionary<int, NetworkStream>();
         TcpListener listener;
         CancellationTokenSource listenCancellationTokenSource;
         CancellationToken listenCancellationToken;
         int clientCounter;
-        public event clientConnectedDelegate ClientConnected;
-        public delegate void clientConnectedDelegate(int clientCounter);
+        public event clientConnectedDelegate clientConnected;
+        public delegate void clientConnectedDelegate(string clientName);
+        public event duplicateClientAttemptedDelegate duplicateClientAttempted;
+        public delegate void duplicateClientAttemptedDelegate(string message);
 
 
         public ServerForm()
         {
             InitializeComponent();
-            ClientConnected += HandleClient;
+            clientConnected += HandleClient;
+            duplicateClientAttempted += AddLogMessage;
         }
 
         private void ServerForm_Load(object sender, EventArgs e)
@@ -103,8 +106,9 @@ namespace TCPChatApplication
 
         private Task AcceptClients()
         {
-            Task acceptClientsTask = Task.Run(() =>
+            Task acceptClientsTask = Task.Run(async () =>
             {
+                bool nameTaken = false;
                 for (int i = 0; i < 5; i++)
                 { 
                     if(!listener.Pending())
@@ -112,24 +116,41 @@ namespace TCPChatApplication
                         continue;
                     }
                     TcpClient client = listener.AcceptTcpClient();
-                    lock (_lock) clients.Add(clientCounter, client);
-                    this.ClientConnected(clientCounter);
-                    StatusTextBox.Invoke(() => StatusTextBox.Text += clientCounter.ToString() + "Someone connected.\r\n");
-                    clientCounter++;
-                    
+                    string clientName = await ReceiveName(client);
+
+                    foreach(var c in clients)
+                    {
+                        if (c.Key == clientName)
+                        {
+                            this.duplicateClientAttempted("Client with name: " + clientName + " attempted to connect. Connection denied.");
+                            await this.Send("taken", client);
+                            nameTaken = true;
+                            break;
+                        }
+                        
+                    }
+
+                    if (!nameTaken)
+                    {
+                        lock (_lock) clients.Add(clientName, client);
+                        this.clientConnected(clientName);
+                        await this.Send("free", client);
+                        StatusTextBox.Invoke(() => StatusTextBox.Text += clientName + "  connected.\r\n");
+                    }
+     
                 }
             });
             return acceptClientsTask;
         }
 
-        private async void HandleClient(int clientId)
+        private async void HandleClient(string clientName)
         {
             Task handleClientsTask = Task.Run(() =>
             {
-                int id = clientId;
+                string name = clientName;
                 TcpClient client;
 
-                lock (_lock) client = clients[id];
+                lock (_lock) client = clients[name];
 
                 while (true)
                 {
@@ -155,12 +176,48 @@ namespace TCPChatApplication
                     }
                 }
 
-                lock (_lock) clients.Remove(id);
+                lock (_lock) clients.Remove(name);
                 client.Client.Shutdown(SocketShutdown.Both);
                 client.Close();
-                StatusTextBox.Invoke(() => StatusTextBox.Text += clientId + " disconnected \r\n");
+                StatusTextBox.Invoke(() => StatusTextBox.Text += clientName + " disconnected \r\n");
             });
             await handleClientsTask;
+        }
+
+        private Task Send(string message, TcpClient client)
+        {
+            Task sendTask = Task.Run(() =>
+            {
+                try
+                {
+                    // Open stream and convert message to bytes
+                    NetworkStream nwStream = client.GetStream();
+                    byte[] bytesToSend = ASCIIEncoding.ASCII.GetBytes(message);
+
+                    // Send the message
+                    nwStream.Write(bytesToSend, 0, bytesToSend.Length);
+
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show(ex.ToString());
+                }
+            });
+            return sendTask;
+        }
+
+        private Task<string> ReceiveName(TcpClient client)
+        {
+            return Task.Run(() =>
+            {
+                NetworkStream nwStream = client.GetStream();
+                byte[] buffer = new byte[1024];
+                //StatusTextBox.Invoke(() => StatusTextBox.Text += "3\r\n");
+                int byteCount = nwStream.Read(buffer, 0, buffer.Length);
+                //StatusTextBox.Invoke(() => StatusTextBox.Text += "4\r\n");
+                string name = Encoding.ASCII.GetString(buffer, 0, byteCount);
+                return name;
+            });
         }
 
         public static void Broadcast(string data)
@@ -176,6 +233,16 @@ namespace TCPChatApplication
                     stream.Write(buffer, 0, buffer.Length);
                 }
             }
+        }
+
+        private async void AddLogMessage(string message)
+        {
+            Task addLogMessageTask = Task.Run(() =>
+            {
+                StatusTextBox.Invoke(() => StatusTextBox.Text += message + "\r\n");
+            });
+
+            await addLogMessageTask;
         }
 
         private void ServerForm_FormClosed(object sender, FormClosedEventArgs e)
