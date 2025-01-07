@@ -20,7 +20,6 @@ namespace TCPChatApplication
         TcpListener listener;
         CancellationTokenSource listenCancellationTokenSource;
         CancellationToken listenCancellationToken;
-        int clientCounter;
         public event clientConnectedDelegate clientConnected;
         public delegate void clientConnectedDelegate(string clientName);
         public event duplicateClientAttemptedDelegate duplicateClientAttempted;
@@ -45,7 +44,6 @@ namespace TCPChatApplication
             {
                 IPAddress ipAddress = IPAddress.Parse(HostTextBox.Text);
                 int port = Convert.ToInt32(PortTextBox.Text);
-                clientCounter = 1;
                 this.listenCancellationTokenSource = new CancellationTokenSource();
                 this.listenCancellationToken = listenCancellationTokenSource.Token;
                 await this.Listen(ipAddress, port);
@@ -75,28 +73,6 @@ namespace TCPChatApplication
                 while (!listenCancellationToken.IsCancellationRequested)
                 {
                     await AcceptClients();
-                    // connect client.
-                    
-
-                    //HandleClients(clientCounter).Start();
-
-
-                    /*
-                    // Get incoming data through stream
-                    NetworkStream nwStream = client.GetStream();
-                    byte[] buffer = new byte[client.ReceiveBufferSize];
-
-                    // Read incoming stream
-                    int bytesRead = nwStream.Read(buffer, 0, client.ReceiveBufferSize);
-
-                    // Convert data to string
-                    string dataReceived = Encoding.ASCII.GetString(buffer, 0, bytesRead);
-                    StatusTextBox.Invoke(() => StatusTextBox.Text += dataReceived + "\r\n");
-
-                    // Write back to client
-                    byte[] bytesToSend = ASCIIEncoding.ASCII.GetBytes("--received--");
-                    nwStream.Write(bytesToSend, 0, bytesToSend.Length);
-                    */
                 }
                 listener.Stop();
                 StatusTextBox.Invoke(() => StatusTextBox.Text += "Stopped listening...\r\n");
@@ -122,7 +98,7 @@ namespace TCPChatApplication
                     {
                         if (c.Key == clientName)
                         {
-                            this.duplicateClientAttempted("Client with name: " + clientName + " attempted to connect. Connection denied.");
+                            this.duplicateClientAttempted(clientName + " attempted to connect. Name already in use, Connection denied.");
                             await this.Send("taken", client);
                             nameTaken = true;
                             break;
@@ -167,7 +143,16 @@ namespace TCPChatApplication
 
                         string data = Encoding.ASCII.GetString(buffer, 0, byteCount);
                         Broadcast(data);
-                        StatusTextBox.Invoke(() => StatusTextBox.Text += data + "\r\n");
+                        string[] segments = data.Split("~");
+
+                        if (segments[0] == "1")
+                        {
+                            StatusTextBox.Invoke(() => StatusTextBox.Text += segments[1] + ": " + segments[2] + "\r\n");
+                        }
+                        if (segments[0] == "2")
+                        {
+                            StatusTextBox.Invoke(() => StatusTextBox.Text += segments[1] + ": " + segments[2] + "\r\n");
+                        }
                     }
                     catch (Exception ex)
                     {
@@ -212,9 +197,7 @@ namespace TCPChatApplication
             {
                 NetworkStream nwStream = client.GetStream();
                 byte[] buffer = new byte[1024];
-                //StatusTextBox.Invoke(() => StatusTextBox.Text += "3\r\n");
                 int byteCount = nwStream.Read(buffer, 0, buffer.Length);
-                //StatusTextBox.Invoke(() => StatusTextBox.Text += "4\r\n");
                 string name = Encoding.ASCII.GetString(buffer, 0, byteCount);
                 return name;
             });

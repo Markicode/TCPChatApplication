@@ -11,6 +11,7 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using System.Text.Json;
 
 namespace TCPChatApplication
 {
@@ -26,7 +27,7 @@ namespace TCPChatApplication
             InitializeComponent();
             connectionCTS = new CancellationTokenSource();
             connectionCancelToken = connectionCTS.Token;
-            
+
         }
 
         private void ClientForm_Load(object sender, EventArgs e)
@@ -37,7 +38,7 @@ namespace TCPChatApplication
         // (Dis)connect button handler.
         private async void ConnectButton_Click(object sender, EventArgs e)
         {
-            
+
             if (ConnectButton.Text == "Connect")
             {
                 if (connectionCTS != null)
@@ -50,7 +51,7 @@ namespace TCPChatApplication
 
                 await this.Connect(connectionCancelToken);
             }
-            if(ConnectButton.Text == "Disconnect")
+            if (ConnectButton.Text == "Disconnect")
             {
                 if (connectionCTS != null)
                 {
@@ -70,7 +71,7 @@ namespace TCPChatApplication
         {
             Task connectTask = Task.Run(async () =>
             {
-                
+
 
                 try
                 {
@@ -94,16 +95,13 @@ namespace TCPChatApplication
                     // Send chatname to server
                     byte[] bytesToSend = ASCIIEncoding.ASCII.GetBytes(this.chatName);
                     ns.Write(bytesToSend, 0, bytesToSend.Length);
-                    ChatTextBox.Invoke(() => ChatTextBox.Text += "3");
-                    //Thread.Sleep(1000);
 
-                    for (int i = 0; i<10000; i++)
+                    for (int i = 0; i < 10000; i++)
                     {
-                        if(ns.DataAvailable)
+                        if (ns.DataAvailable)
                         {
                             byte[] receivedBytes = new byte[1024];
                             int byte_count = ns.Read(receivedBytes, 0, receivedBytes.Length);
-                            ChatTextBox.Invoke(() => ChatTextBox.Text += "4");
                             answer = Encoding.ASCII.GetString(receivedBytes, 0, byte_count);
                             break;
                         }
@@ -113,15 +111,12 @@ namespace TCPChatApplication
                         }
                     }
 
-                    
-                    MessageBox.Show(answer);
                     if (answer == "taken")
                     {
-                        MessageBox.Show("o oh 2");
                         await this.Disconnect();
                         ChatTextBox.Invoke(() => ChatTextBox.Text += "Username already taken. Disconnected! \r\n");
                     }
-                    if (answer ==  "free")
+                    if (answer == "free")
                     {
                         ChatTextBox.Invoke(() => ChatTextBox.Text += "Username appointed. Connected! \r\n");
                     }
@@ -144,17 +139,15 @@ namespace TCPChatApplication
 
                 while (true)
                 {
-                    ChatTextBox.Invoke(() => ChatTextBox.Text += "1");
                     try
                     {
-                        
+
                         if (!connCancelToken.IsCancellationRequested)
                         {
                             if (ns.DataAvailable)
                             {
                                 try
                                 {
-                                    ChatTextBox.Invoke(() => ChatTextBox.Text += "2");
                                     await ReceiveData(client, connCancelToken);
                                 }
                                 catch (Exception e)
@@ -168,9 +161,9 @@ namespace TCPChatApplication
                             connCancelToken.ThrowIfCancellationRequested();
                         }
                     }
-                    catch(Exception ex)
+                    catch (Exception ex)
                     {
-                        if(ex is OperationCanceledException)
+                        if (ex is OperationCanceledException)
                         {
                             MessageBox.Show($"Disconnected by user");
                             ConnectButton.Invoke(() => { ConnectButton.Text = "Connect"; });
@@ -186,7 +179,6 @@ namespace TCPChatApplication
                 }
 
                 // TODO: proper cleanup and control functionality
-                ChatTextBox.Invoke(() => ChatTextBox.Text += "6");
                 client.Client.Shutdown(SocketShutdown.Send);
                 ns.Close();
                 client.Close();
@@ -203,8 +195,9 @@ namespace TCPChatApplication
                 try
                 {
                     // Open stream and convert message to bytes
+                    // Add nr.1 at the beginning to let the server know its a string message.
                     NetworkStream nwStream = client.GetStream();
-                    byte[] bytesToSend = ASCIIEncoding.ASCII.GetBytes(this.chatName + "~" + message);
+                    byte[] bytesToSend = ASCIIEncoding.ASCII.GetBytes("1~" + this.chatName + "~" + message);
 
                     // Send the message
                     nwStream.Write(bytesToSend, 0, bytesToSend.Length);
@@ -217,6 +210,32 @@ namespace TCPChatApplication
                 }
             });
             return sendTask;
+        }
+
+        private Task SendObject(object o)
+        {
+            Task sendObjectTask = Task.Run(() =>
+            {
+                try
+                {
+                    // Convert object to json string, open stream and send json string as byte array.
+                    // Add nr. 2 at the beginning of the string to signal the server that it needs to deserialize the string.
+                    string jsonString = JsonSerializer.Serialize(o);
+                    NetworkStream nwStream = client.GetStream();
+                    byte[] bytesToSend = ASCIIEncoding.ASCII.GetBytes("2~" + this.chatName + "~" + jsonString);
+
+                    // Send the message
+                    nwStream.Write(bytesToSend, 0, bytesToSend.Length);
+                    MessageTextBox.Invoke(() => { MessageTextBox.Text = ""; });
+                    ChatTextBox.Invoke(() => { ChatTextBox.Text += "You sent an object \r\n"; });
+
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show(ex.ToString());
+                }
+            });
+            return sendObjectTask;
         }
 
         private Task ReceiveData(TcpClient client, CancellationToken connCancelToken)
@@ -237,39 +256,17 @@ namespace TCPChatApplication
                             string data = Encoding.ASCII.GetString(receivedBytes, 0, byte_count);
                             string[] segments = data.Split('~');
 
-                            ChatTextBox.Invoke(() => ChatTextBox.Text += segments[0] + ": " + segments[1] + "\r\n");
-                        }
-                    }
-
-
-
-                    /*if (!connCancelToken.IsCancellationRequested)
-                    {
-                        NetworkStream ns = client.GetStream();
-                        byte[] receivedBytes = new byte[1024];
-                        int byte_count;
-                        ChatTextBox.Invoke(() => ChatTextBox.Text += "3");
-
-                        
-                        while ((byte_count = ns.Read(receivedBytes, 0, receivedBytes.Length)) > 0)
-                        {
-                            ChatTextBox.Invoke(() => ChatTextBox.Text += "4");
-                            if (connectionCancelToken.IsCancellationRequested)
+                            if (segments[0] == "1")
                             {
-                                break;
+                                ChatTextBox.Invoke(() => ChatTextBox.Text += segments[1] + ": " + segments[2] + "\r\n");
                             }
-                            connCancelToken.ThrowIfCancellationRequested();
-                            string data = Encoding.ASCII.GetString(receivedBytes, 0, byte_count);
-                            string[] segments = data.Split('~');
-
-                            ChatTextBox.Invoke(() => ChatTextBox.Text += segments[0] + ": " + segments[1] + "\r\n");
+                            if (segments[0] == "2")
+                            {
+                                ChatTextBox.Invoke(() => ChatTextBox.Text += segments[1] + ": " + segments[2] + "\r\n");
+                            }
                         }
-
                     }
-                    else
-                    {
-                        connCancelToken.ThrowIfCancellationRequested();
-                    } */
+
                 }
                 catch (Exception ex)
                 {
@@ -301,6 +298,17 @@ namespace TCPChatApplication
         private void ClientForm_FormClosed(object sender, FormClosedEventArgs e)
         {
             Environment.Exit(0);
+        }
+
+        private async void SendObjectButton_Click(object sender, EventArgs e)
+        {
+            TestObject testObject = new TestObject()
+            {
+                firstName = "Mark",
+                lastName = "Schwering",
+                age = 38
+            };
+            await this.SendObject(testObject);
         }
     }
 }

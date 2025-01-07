@@ -38,6 +38,7 @@
             ChatTextBox = new TextBox();
             ChatnameTextBox = new TextBox();
             ChatnameLabel = new Label();
+            SendObjectButton = new Button();
             SuspendLayout();
             // 
             // HostLabel
@@ -89,7 +90,7 @@
             MessageTextBox.Location = new Point(53, 44);
             MessageTextBox.Multiline = true;
             MessageTextBox.Name = "MessageTextBox";
-            MessageTextBox.Size = new Size(330, 64);
+            MessageTextBox.Size = new Size(570, 64);
             MessageTextBox.TabIndex = 5;
             // 
             // SendButton
@@ -109,7 +110,7 @@
             ChatTextBox.Name = "ChatTextBox";
             ChatTextBox.ReadOnly = true;
             ChatTextBox.ScrollBars = ScrollBars.Vertical;
-            ChatTextBox.Size = new Size(330, 242);
+            ChatTextBox.Size = new Size(570, 486);
             ChatTextBox.TabIndex = 7;
             // 
             // ChatnameTextBox
@@ -129,11 +130,22 @@
             ChatnameLabel.TabIndex = 9;
             ChatnameLabel.Text = "Chatname:";
             // 
+            // SendObjectButton
+            // 
+            SendObjectButton.Location = new Point(399, 126);
+            SendObjectButton.Name = "SendObjectButton";
+            SendObjectButton.Size = new Size(117, 23);
+            SendObjectButton.TabIndex = 10;
+            SendObjectButton.Text = "Send Object";
+            SendObjectButton.UseVisualStyleBackColor = true;
+            SendObjectButton.Click += SendObjectButton_Click;
+            // 
             // ClientForm
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(435, 432);
+            ClientSize = new Size(659, 698);
+            Controls.Add(SendObjectButton);
             Controls.Add(ChatnameLabel);
             Controls.Add(ChatnameTextBox);
             Controls.Add(ChatTextBox);
@@ -163,5 +175,6 @@
         private TextBox ChatTextBox;
         private TextBox ChatnameTextBox;
         private Label ChatnameLabel;
+        private Button SendObjectButton;
     }
 }
