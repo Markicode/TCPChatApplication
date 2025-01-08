@@ -219,7 +219,7 @@ namespace TCPChatApplication
                 try
                 {
                     // Convert object to json string, open stream and send json string as byte array.
-                    // Add nr. 2 at the beginning of the string to signal the server that it needs to deserialize the string.
+                    // Add nr. 2 at the beginning of the string to signal the server that it is receiving an object.
                     string jsonString = JsonSerializer.Serialize(o);
                     NetworkStream nwStream = client.GetStream();
                     byte[] bytesToSend = ASCIIEncoding.ASCII.GetBytes("2~" + this.chatName + "~" + jsonString);

@@ -39,6 +39,7 @@
             ChatnameTextBox = new TextBox();
             ChatnameLabel = new Label();
             SendObjectButton = new Button();
+            ChattersCheckedListBox = new CheckedListBox();
             SuspendLayout();
             // 
             // HostLabel
@@ -110,7 +111,7 @@
             ChatTextBox.Name = "ChatTextBox";
             ChatTextBox.ReadOnly = true;
             ChatTextBox.ScrollBars = ScrollBars.Vertical;
-            ChatTextBox.Size = new Size(570, 486);
+            ChatTextBox.Size = new Size(570, 494);
             ChatTextBox.TabIndex = 7;
             // 
             // ChatnameTextBox
@@ -140,11 +141,20 @@
             SendObjectButton.UseVisualStyleBackColor = true;
             SendObjectButton.Click += SendObjectButton_Click;
             // 
+            // ChattersCheckedListBox
+            // 
+            ChattersCheckedListBox.FormattingEnabled = true;
+            ChattersCheckedListBox.Location = new Point(648, 44);
+            ChattersCheckedListBox.Name = "ChattersCheckedListBox";
+            ChattersCheckedListBox.Size = new Size(227, 616);
+            ChattersCheckedListBox.TabIndex = 11;
+            // 
             // ClientForm
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(659, 698);
+            ClientSize = new Size(901, 698);
+            Controls.Add(ChattersCheckedListBox);
             Controls.Add(SendObjectButton);
             Controls.Add(ChatnameLabel);
             Controls.Add(ChatnameTextBox);
@@ -176,5 +186,6 @@
         private TextBox ChatnameTextBox;
         private Label ChatnameLabel;
         private Button SendObjectButton;
+        private CheckedListBox ChattersCheckedListBox;
     }
 }

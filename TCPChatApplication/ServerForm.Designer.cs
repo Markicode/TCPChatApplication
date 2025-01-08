@@ -35,7 +35,7 @@
             PortLabel = new Label();
             HostTextBox = new TextBox();
             HostLabel = new Label();
-            checkedListBox1 = new CheckedListBox();
+            ClientsCheckedListBox = new CheckedListBox();
             SuspendLayout();
             // 
             // StopButton
@@ -55,7 +55,7 @@
             StatusTextBox.Name = "StatusTextBox";
             StatusTextBox.ReadOnly = true;
             StatusTextBox.ScrollBars = ScrollBars.Vertical;
-            StatusTextBox.Size = new Size(421, 287);
+            StatusTextBox.Size = new Size(625, 508);
             StatusTextBox.TabIndex = 12;
             // 
             // StartButton
@@ -102,20 +102,21 @@
             HostLabel.TabIndex = 7;
             HostLabel.Text = "Host:";
             // 
-            // checkedListBox1
+            // ClientsCheckedListBox
             // 
-            checkedListBox1.FormattingEnabled = true;
-            checkedListBox1.Location = new Point(522, 56);
-            checkedListBox1.Name = "checkedListBox1";
-            checkedListBox1.Size = new Size(190, 292);
-            checkedListBox1.TabIndex = 14;
+            ClientsCheckedListBox.FormattingEnabled = true;
+            ClientsCheckedListBox.Location = new Point(722, 56);
+            ClientsCheckedListBox.Name = "ClientsCheckedListBox";
+            ClientsCheckedListBox.Size = new Size(204, 508);
+            ClientsCheckedListBox.TabIndex = 14;
+            ClientsCheckedListBox.SelectedIndexChanged += checkedListBox1_SelectedIndexChanged;
             // 
             // ServerForm
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(753, 373);
-            Controls.Add(checkedListBox1);
+            ClientSize = new Size(949, 586);
+            Controls.Add(ClientsCheckedListBox);
             Controls.Add(StopButton);
             Controls.Add(StatusTextBox);
             Controls.Add(StartButton);
@@ -140,6 +141,6 @@
         private Label PortLabel;
         private TextBox HostTextBox;
         private Label HostLabel;
-        private CheckedListBox checkedListBox1;
+        private CheckedListBox ClientsCheckedListBox;
     }
 }
