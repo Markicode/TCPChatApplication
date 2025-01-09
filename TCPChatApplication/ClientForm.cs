@@ -22,11 +22,21 @@ namespace TCPChatApplication
         CancellationTokenSource connectionCTS;
         CancellationToken connectionCancelToken;
 
+        private object _lock = new object();
+        private Dictionary<string, TcpClient> clients = new Dictionary<string, TcpClient>();
+
+        public delegate void chatterJoinedDelegate(string clientName);
+        public event chatterJoinedDelegate chatterJoined;
+        public delegate void chatterLeftDelegate(string clientName);
+        public event chatterLeftDelegate chatterLeft;
+
         public ClientForm()
         {
             InitializeComponent();
             connectionCTS = new CancellationTokenSource();
             connectionCancelToken = connectionCTS.Token;
+            chatterJoined += AddChatterToList;
+            chatterLeft += DeleteChatterFromList;
 
         }
 
@@ -89,6 +99,7 @@ namespace TCPChatApplication
 
                 NetworkStream ns = client.GetStream();
                 string answer = "";
+                string[] answerSegments;
 
                 if (this.chatName != null && client != null)
                 {
@@ -110,25 +121,25 @@ namespace TCPChatApplication
                             answer = "timeout";
                         }
                     }
+                    answerSegments = answer.Split("~");
 
-                    if (answer == "taken")
+                    if (answerSegments[0] == "taken")
                     {
                         await this.Disconnect();
                         ChatTextBox.Invoke(() => ChatTextBox.Text += "Username already taken. Disconnected! \r\n");
                     }
-                    if (answer == "free")
+                    if (answerSegments[0] == "free")
                     {
                         ChatTextBox.Invoke(() => ChatTextBox.Text += "Username appointed. Connected! \r\n");
+                        string[] chatters = answerSegments[1].Split(',');
+                        this.AddChattersToList(chatters);
                     }
                     if (answer == "timeout")
                     {
                         ChatTextBox.Invoke(() => ChatTextBox.Text += "Server timeout. Not connected! \r\n");
                     }
 
-                    /*while ((byte_count = ns.Read(receivedBytes, 0, receivedBytes.Length)) > 0)
-                    {
-                        string name = Encoding.ASCII.GetString(receivedBytes, 0, byte_count);
-                    }*/
+
                 }
 
                 else
@@ -264,6 +275,24 @@ namespace TCPChatApplication
                             {
                                 ChatTextBox.Invoke(() => ChatTextBox.Text += segments[1] + ": " + segments[2] + "\r\n");
                             }
+                            if (segments[0] == "3")
+                            {
+                                if (chatterJoined != null)
+                                {
+                                    if (segments[1] != chatName)
+                                    {
+                                        this.chatterJoined(segments[1]);
+                                    }
+                                }
+                            }
+                            if (segments[0] == "4")
+                            {
+                                if (chatterLeft != null)
+                                {
+                                    this.chatterLeft(segments[1]);
+                                }
+                            }
+                           
                         }
                     }
 
@@ -284,6 +313,16 @@ namespace TCPChatApplication
 
             });
             return receiveDataTask;
+        }
+
+        private void AddChatterToList(string clientName)
+        {
+            ChattersCheckedListBox.Invoke(() => { ChattersCheckedListBox.Items.Add(clientName); });
+        }
+
+        private void DeleteChatterFromList(string clientName)
+        {
+            ChattersCheckedListBox.Invoke(() => { ChattersCheckedListBox.Items.Remove(clientName); });
         }
 
         private Task Disconnect()
@@ -309,6 +348,17 @@ namespace TCPChatApplication
                 age = 38
             };
             await this.SendObject(testObject);
+        }
+
+        private void AddChattersToList(string[] chatters)
+        {
+            foreach (string chatter in chatters)
+            {
+                if (chatter != chatName)
+                {
+                    ChattersCheckedListBox.Invoke(() => { ChattersCheckedListBox.Items.Add(chatter); });
+                }
+            }
         }
     }
 }

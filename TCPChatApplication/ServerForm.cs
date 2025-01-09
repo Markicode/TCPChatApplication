@@ -124,8 +124,20 @@ namespace TCPChatApplication
                     {
                         // if the name is free, the client will be added to the dictionary and the clientconnected event will be invoked.
                         lock (_lock) clients.Add(clientName, client);
+                        string chatters = "";
+                        lock (_lock)
+                        {
+                            if (clients.Count > 0)
+                            {
+                                foreach (string chatter in clients.Keys)
+                                {
+                                    chatters += chatter + ",";
+                                }
+                            }
+                        }
+                        chatters = chatters.Remove(chatters.Length - 1);
+                        await this.Send("free~" + chatters, client);
                         this.clientConnected(clientName);
-                        await this.Send("free", client);
                         StatusTextBox.Invoke(() => StatusTextBox.Text += clientName + "  connected.\r\n");
                     }
 
@@ -136,12 +148,42 @@ namespace TCPChatApplication
 
         private async void HandleClient(string clientName)
         {
-            Task handleClientsTask = Task.Run(() =>
+            Task handleClientsTask = Task.Run(async () =>
             {
                 string name = clientName;
                 TcpClient client;
 
                 lock (_lock) client = clients[name];
+
+                /*try
+                {
+                    string chatters = "";
+                    lock (_lock)
+                    {
+                        if (clients.Count > 0)
+                        {
+                            foreach (string chatter in clients.Keys)
+                            {
+                                chatters += chatter + ",";
+                            }
+                        }
+                    }
+                    chatters = chatters.Remove(chatters.Length-1);
+                    await this.Send(chatters, client);
+                }
+                catch(Exception ex)
+                {
+                    MessageBox.Show("Failed to send list of chatters \r\n" + ex.ToString());
+                }*/
+
+                try
+                {
+                    Broadcast("3~" + clientName);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show("Failed to broadcast joining client name \r\n" + ex.ToString());
+                }
 
                 while (true)
                 {
@@ -174,6 +216,15 @@ namespace TCPChatApplication
                         MessageBox.Show(ex.ToString());
                         break;
                     }
+                }
+
+                try
+                {
+                    Broadcast("4~" + clientName);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show("Failed to broadcast leaving client name \r\n" + ex.ToString());
                 }
 
                 lock (_lock) clients.Remove(name);
