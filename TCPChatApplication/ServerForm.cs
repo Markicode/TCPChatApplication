@@ -9,22 +9,23 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Net;
 using System.Net.Sockets;
+using System.Net.Http;
 
 namespace TCPChatApplication
 {
     public partial class ServerForm : Form
     {
         static readonly object _lock = new object();
-        static readonly Dictionary<string, TcpClient> clients = new Dictionary<string, TcpClient>();
+        static readonly Dictionary<string, Client> clients = new Dictionary<string, Client>();
         TcpListener listener;
 
         CancellationTokenSource listenCancellationTokenSource;
         CancellationToken listenCancellationToken;
 
         public event clientConnectedDelegate clientConnected;
-        public delegate void clientConnectedDelegate(string clientName);
+        public delegate void clientConnectedDelegate(Client client);
         public event clientConnectedDelegate clientDisconnected;
-        public delegate void clientDisconnectedDelegate(string clientName);
+        public delegate void clientDisconnectedDelegate(Client client);
         public event duplicateClientAttemptedDelegate duplicateClientAttempted;
         public delegate void duplicateClientAttemptedDelegate(string message);
 
@@ -104,8 +105,8 @@ namespace TCPChatApplication
                     // In case a client does want to connect, it is assigned to client variable.
                     // The client will send its name given clientside, and the name will be checked for availability in the clients dictionary.
                     // The server will respond with a taken or free message.
-                    TcpClient client = listener.AcceptTcpClient();
-                    string clientName = await ReceiveName(client);
+                    TcpClient tcpClient = listener.AcceptTcpClient();
+                    string clientName = await ReceiveName(tcpClient);
 
                     foreach (var c in clients)
                     {
@@ -113,7 +114,7 @@ namespace TCPChatApplication
                         {
                             // If the name is taken, the code will end without the client being added to the dictionary
                             this.duplicateClientAttempted(clientName + " attempted to connect. Name already in use, Connection denied.");
-                            await this.Send("taken", client);
+                            await this.Send("taken", tcpClient);
                             nameTaken = true;
                             break;
                         }
@@ -123,6 +124,7 @@ namespace TCPChatApplication
                     if (!nameTaken)
                     {
                         // if the name is free, the client will be added to the dictionary and the clientconnected event will be invoked.
+                        Client client = new Client(tcpClient, clientName);
                         lock (_lock) clients.Add(clientName, client);
                         string chatters = "";
                         lock (_lock)
@@ -136,8 +138,8 @@ namespace TCPChatApplication
                             }
                         }
                         chatters = chatters.Remove(chatters.Length - 1);
-                        await this.Send("free~" + chatters, client);
-                        this.clientConnected(clientName);
+                        await this.Send("free~" + chatters, tcpClient);
+                        this.clientConnected(client);
                         StatusTextBox.Invoke(() => StatusTextBox.Text += clientName + "  connected.\r\n");
                     }
 
@@ -146,39 +148,16 @@ namespace TCPChatApplication
             return acceptClientsTask;
         }
 
-        private async void HandleClient(string clientName)
+        private async void HandleClient(Client client)
         {
             Task handleClientsTask = Task.Run(async () =>
             {
-                string name = clientName;
-                TcpClient client;
-
-                lock (_lock) client = clients[name];
-
-                /*try
-                {
-                    string chatters = "";
-                    lock (_lock)
-                    {
-                        if (clients.Count > 0)
-                        {
-                            foreach (string chatter in clients.Keys)
-                            {
-                                chatters += chatter + ",";
-                            }
-                        }
-                    }
-                    chatters = chatters.Remove(chatters.Length-1);
-                    await this.Send(chatters, client);
-                }
-                catch(Exception ex)
-                {
-                    MessageBox.Show("Failed to send list of chatters \r\n" + ex.ToString());
-                }*/
-
+                Client clientToHandle = client;
+                lock (_lock) clientToHandle = clients[client.clientName];
+                
                 try
                 {
-                    Broadcast("3~" + clientName);
+                    Broadcast("3~" + client.clientName);
                 }
                 catch (Exception ex)
                 {
@@ -189,7 +168,7 @@ namespace TCPChatApplication
                 {
                     try
                     {
-                        NetworkStream nwStream = client.GetStream();
+                        NetworkStream nwStream = clientToHandle.tcpClient.GetStream();
                         byte[] buffer = new byte[1024];
                         int byteCount = nwStream.Read(buffer, 0, buffer.Length);
 
@@ -220,18 +199,18 @@ namespace TCPChatApplication
 
                 try
                 {
-                    Broadcast("4~" + clientName);
+                    Broadcast("4~" + clientToHandle.clientName);
                 }
                 catch (Exception ex)
                 {
                     MessageBox.Show("Failed to broadcast leaving client name \r\n" + ex.ToString());
                 }
 
-                lock (_lock) clients.Remove(name);
-                client.Client.Shutdown(SocketShutdown.Both);
-                client.Close();
-                this.clientDisconnected(clientName);
-                StatusTextBox.Invoke(() => StatusTextBox.Text += clientName + " disconnected \r\n");
+                lock (_lock) clients.Remove(clientToHandle.clientName);
+                clientToHandle.tcpClient.Client.Shutdown(SocketShutdown.Both);
+                clientToHandle.tcpClient.Close();
+                this.clientDisconnected(clientToHandle);
+                StatusTextBox.Invoke(() => StatusTextBox.Text += clientToHandle.clientName + " disconnected \r\n");
             });
             await handleClientsTask;
         }
@@ -276,9 +255,9 @@ namespace TCPChatApplication
 
             lock (_lock)
             {
-                foreach (TcpClient c in clients.Values)
+                foreach (Client c in clients.Values)
                 {
-                    NetworkStream stream = c.GetStream();
+                    NetworkStream stream = c.tcpClient.GetStream();
 
                     stream.Write(buffer, 0, buffer.Length);
                 }
@@ -305,14 +284,14 @@ namespace TCPChatApplication
 
         }
 
-        private void AddClientToList(string clientName)
+        private void AddClientToList(Client client)
         {
-            ClientsCheckedListBox.Invoke(() => ClientsCheckedListBox.Items.Add(clientName));
+            ClientsCheckedListBox.Invoke(() => ClientsCheckedListBox.Items.Add(client.clientName));
         }
 
-        private void DeleteClientFromList(string clientName)
+        private void DeleteClientFromList(Client client)
         {
-            ClientsCheckedListBox.Invoke(() => ClientsCheckedListBox.Items.Remove(clientName));
+            ClientsCheckedListBox.Invoke(() => ClientsCheckedListBox.Items.Remove(client.clientName));
         }
     }
 }
