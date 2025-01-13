@@ -29,6 +29,8 @@ namespace TCPChatApplication
         public event chatterJoinedDelegate chatterJoined;
         public delegate void chatterLeftDelegate(string clientName);
         public event chatterLeftDelegate chatterLeft;
+        public delegate void disconnectedDelegate();
+        public event disconnectedDelegate disconnected;
 
         public ClientForm()
         {
@@ -37,6 +39,7 @@ namespace TCPChatApplication
             connectionCancelToken = connectionCTS.Token;
             chatterJoined += AddChatterToList;
             chatterLeft += DeleteChatterFromList;
+            disconnected += EmptyChattersList;
 
         }
 
@@ -63,10 +66,11 @@ namespace TCPChatApplication
             }
             if (ConnectButton.Text == "Disconnect")
             {
-                if (connectionCTS != null)
+                /*if (connectionCTS != null)
                 {
                     connectionCTS.Cancel();
-                }
+                }*/
+                await this.Disconnect();
             }
         }
 
@@ -176,7 +180,7 @@ namespace TCPChatApplication
                     {
                         if (ex is OperationCanceledException)
                         {
-                            MessageBox.Show($"Disconnected by user");
+                            ChatTextBox.Invoke( () => ChatTextBox.Text += $"Disconnected by user \r\n");
                             ConnectButton.Invoke(() => { ConnectButton.Text = "Connect"; });
                             break;
                         }
@@ -330,6 +334,10 @@ namespace TCPChatApplication
             Task disconnectTask = Task.Run(() =>
             {
                 connectionCTS.Cancel();
+                if(this.disconnected != null)
+                {
+                    this.disconnected();
+                }
             });
             return disconnectTask;
         }
@@ -359,6 +367,15 @@ namespace TCPChatApplication
                     ChattersCheckedListBox.Invoke(() => { ChattersCheckedListBox.Items.Add(chatter); });
                 }
             }
+        }
+
+        private void EmptyChattersList()
+        {
+            for(int i = ChattersCheckedListBox.Items.Count - 1; i >= 0; i--)
+            {
+                ChattersCheckedListBox.Invoke(() => { ChattersCheckedListBox.Items.Remove(ChattersCheckedListBox.Items[i]); });
+            }
+                 
         }
     }
 }
